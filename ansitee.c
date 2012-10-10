@@ -1,3 +1,8 @@
+/* ansitee
+ * Paul Battley <pbattley@gmail.com> 2012
+ * Based on FreeBSD's tee.c, whose copyright follows.
+ */
+
 /*
  * Copyright (c) 1988, 1993
  *    The Regents of the University of California.  All rights reserved.
@@ -40,30 +45,36 @@
 typedef struct _list {
     struct _list *next;
     int fd;
+    int strip_ansi;
     const char *name;
 } LIST;
 static LIST *head;
 
-static void add(int, const char *);
+static void add(int, int, const char *);
 static void usage(void);
+static ssize_t write_without_ansi(int, const void *, size_t);
 
 int
 main(int argc, char *argv[]) {
     LIST *p;
     int n, fd, rval, wval;
     char *bp;
-    int append, ch, exitval;
+    int append, strip_ansi, ch, exitval;
     char *buf;
 #define BSIZE (8 * 1024)
 
     append = 0;
-    while ((ch = getopt(argc, argv, "aih")) != -1) {
+    strip_ansi = 0;
+    while ((ch = getopt(argc, argv, "aish")) != -1) {
         switch((char)ch) {
             case 'a':
                 append = 1;
                 break;
             case 'i':
                 (void)signal(SIGINT, SIG_IGN);
+                break;
+            case 's':
+                strip_ansi = 1;
                 break;
             case '?':
             case 'h':
@@ -78,7 +89,7 @@ main(int argc, char *argv[]) {
         err(1, "malloc");
     }
 
-    add(STDOUT_FILENO, "stdout");
+    add(STDOUT_FILENO, 0, "stdout");
 
     for (exitval = 0; *argv; ++argv) {
         if ((fd = open(*argv,
@@ -87,7 +98,7 @@ main(int argc, char *argv[]) {
             warn("%s", *argv);
             exitval = 1;
         } else {
-            add(fd, *argv);
+            add(fd, strip_ansi, *argv);
         }
     }
 
@@ -96,7 +107,12 @@ main(int argc, char *argv[]) {
             n = rval;
             bp = buf;
             do {
-                if ((wval = write(p->fd, bp, n)) == -1) {
+                if (p->strip_ansi == 0) {
+                    wval = write(p->fd, bp, n);
+                } else {
+                    wval = write_without_ansi(p->fd, bp, n);
+                }
+                if (wval == -1) {
                     warn("%s", p->name);
                     exitval = 1;
                     break;
@@ -118,7 +134,7 @@ usage(void) {
 }
 
 static void
-add(int fd, const char *name) {
+add(int fd, int strip_ansi, const char *name) {
     LIST *p;
 
     if ((p = malloc(sizeof(LIST))) == NULL) {
@@ -126,6 +142,37 @@ add(int fd, const char *name) {
     }
     p->fd = fd;
     p->name = name;
+    p->strip_ansi = strip_ansi;
     p->next = head;
     head = p;
+}
+
+static ssize_t
+write_without_ansi(int fd, const void *buf, size_t count) {
+    int escaped = 0, i;
+    char ch;
+    for (i = 0; i < count; i++) {
+        ch = ((char *)buf)[i];
+        switch (escaped) {
+            case 0:
+                if (ch == 0x1B) { // Possible lead byte
+                    escaped = 1;
+                } else { // Normal output
+                    write(fd, &ch, 1);
+                }
+                break;
+            case 1:
+                if (ch == '[') { // Now in an escape sequence
+                    escaped = 2;
+                } else { // False alarm. Emit the ESC
+                    escaped = 0;
+                    write(fd, "\x1B", 1);
+                }
+                break;
+            case 2:
+                if (ch >= 0x40 && ch <= 0x7E) { // End of sequence
+                    escaped = 0;
+                }
+        }
+    }
 }
