@@ -28,18 +28,15 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     @(#)tee.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD$
-.\"
-.Dd November 13, 2007
-.Dt TEE 1
+.Dd October 10, 2012
+.Dt ANSITEE 1
 .Os
 .Sh NAME
-.Nm tee
-.Nd duplicate standard input
+.Nm ansitee
+.Nd duplicate standard input, with the option to strip ANSI control sequences
 .Sh SYNOPSIS
 .Nm
-.Op Fl ai
+.Op Fl ais
 .Op Ar
 .Sh DESCRIPTION
 The
@@ -47,6 +44,9 @@ The
 utility copies standard input to standard output,
 making a copy in zero or more files.
 The output is unbuffered.
+.Pp
+Files can optionally be written stripped of any ANSI control sequences passed
+into standard input.
 .Pp
 The following options are available:
 .Bl -tag -width indent
@@ -57,6 +57,9 @@ overwriting them.
 Ignore the
 .Dv SIGINT
 signal.
+.It Fl s
+Strip ANSI control sequences when writing to files.
+They are still written to standard output.
 .El
 .Pp
 The following operands are available:
@@ -74,9 +77,3 @@ except in the event of the
 option.
 .Sh EXIT STATUS
 .Ex -std
-.Sh STANDARDS
-The
-.Nm
-utility is expected to be
-.St -p1003.2
-compatible.
