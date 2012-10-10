@@ -57,7 +57,7 @@ main(int argc, char *argv[]) {
 #define BSIZE (8 * 1024)
 
     append = 0;
-    while ((ch = getopt(argc, argv, "ai")) != -1) {
+    while ((ch = getopt(argc, argv, "aih")) != -1) {
         switch((char)ch) {
             case 'a':
                 append = 1;
@@ -66,6 +66,7 @@ main(int argc, char *argv[]) {
                 (void)signal(SIGINT, SIG_IGN);
                 break;
             case '?':
+            case 'h':
             default:
                 usage();
         }
