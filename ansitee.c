@@ -81,8 +81,9 @@ main(int argc, char *argv[]) {
     add(STDOUT_FILENO, "stdout");
 
     for (exitval = 0; *argv; ++argv) {
-        if ((fd = open(*argv, append ? O_WRONLY|O_CREAT|O_APPEND :
-                        O_WRONLY|O_CREAT|O_TRUNC, DEFFILEMODE)) < 0) {
+        if ((fd = open(*argv,
+                       O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC),
+                       DEFFILEMODE)) < 0) {
             warn("%s", *argv);
             exitval = 1;
         } else {
