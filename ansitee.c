@@ -48,8 +48,7 @@ static void add(int, const char *);
 static void usage(void);
 
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
     LIST *p;
     int n, fd, rval, wval;
     char *bp;
@@ -58,35 +57,39 @@ main(int argc, char *argv[])
 #define BSIZE (8 * 1024)
 
     append = 0;
-    while ((ch = getopt(argc, argv, "ai")) != -1)
+    while ((ch = getopt(argc, argv, "ai")) != -1) {
         switch((char)ch) {
-        case 'a':
-            append = 1;
-            break;
-        case 'i':
-            (void)signal(SIGINT, SIG_IGN);
-            break;
-        case '?':
-        default:
-            usage();
+            case 'a':
+                append = 1;
+                break;
+            case 'i':
+                (void)signal(SIGINT, SIG_IGN);
+                break;
+            case '?':
+            default:
+                usage();
         }
+    }
     argv += optind;
     argc -= optind;
 
-    if ((buf = malloc(BSIZE)) == NULL)
+    if ((buf = malloc(BSIZE)) == NULL) {
         err(1, "malloc");
+    }
 
     add(STDOUT_FILENO, "stdout");
 
-    for (exitval = 0; *argv; ++argv)
+    for (exitval = 0; *argv; ++argv) {
         if ((fd = open(*argv, append ? O_WRONLY|O_CREAT|O_APPEND :
-            O_WRONLY|O_CREAT|O_TRUNC, DEFFILEMODE)) < 0) {
+                        O_WRONLY|O_CREAT|O_TRUNC, DEFFILEMODE)) < 0) {
             warn("%s", *argv);
             exitval = 1;
-        } else
+        } else {
             add(fd, *argv);
+        }
+    }
 
-    while ((rval = read(STDIN_FILENO, buf, BSIZE)) > 0)
+    while ((rval = read(STDIN_FILENO, buf, BSIZE)) > 0) {
         for (p = head; p; p = p->next) {
             n = rval;
             bp = buf;
@@ -99,25 +102,26 @@ main(int argc, char *argv[])
                 bp += wval;
             } while (n -= wval);
         }
-    if (rval < 0)
+    }
+    if (rval < 0) {
         err(1, "read");
+    }
     exit(exitval);
 }
 
 static void
-usage(void)
-{
+usage(void) {
     (void)fprintf(stderr, "usage: tee [-ai] [file ...]\n");
     exit(1);
 }
 
 static void
-add(int fd, const char *name)
-{
+add(int fd, const char *name) {
     LIST *p;
 
-    if ((p = malloc(sizeof(LIST))) == NULL)
+    if ((p = malloc(sizeof(LIST))) == NULL) {
         err(1, "malloc");
+    }
     p->fd = fd;
     p->name = name;
     p->next = head;
