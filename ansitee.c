@@ -147,31 +147,40 @@ add(int fd, int strip_ansi, const char *name) {
     head = p;
 }
 
+#define NORMAL_TEXT      0
+#define MAYBE_LEAD_BYTE  1
+#define IN_ANSI_SEQUENCE 2
+
+#define ANSI_ESCAPE_FIRST 0x1B
+#define ANSI_ESCAPE_SECOND '['
+
+#define is_sequence_end_byte(ch) ((ch) >= 0x40 && (ch) <= 0x7E)
+
 static ssize_t
 write_without_ansi(int fd, const void *buf, size_t count) {
-    int escaped = 0, i;
-    char ch;
+    int state = NORMAL_TEXT, i;
+    char ch, esc = ANSI_ESCAPE_FIRST;
     for (i = 0; i < count; i++) {
         ch = ((char *)buf)[i];
-        switch (escaped) {
-            case 0:
-                if (ch == 0x1B) { // Possible lead byte
-                    escaped = 1;
+        switch (state) {
+            case NORMAL_TEXT:
+                if (ch == ANSI_ESCAPE_FIRST) { // Possible lead byte
+                    state = MAYBE_LEAD_BYTE;
                 } else { // Normal output
                     write(fd, &ch, 1);
                 }
                 break;
-            case 1:
-                if (ch == '[') { // Now in an escape sequence
-                    escaped = 2;
-                } else { // False alarm. Emit the ESC
-                    escaped = 0;
-                    write(fd, "\x1B", 1);
+            case MAYBE_LEAD_BYTE:
+                if (ch == ANSI_ESCAPE_SECOND) { // Now in an escape sequence
+                    state = IN_ANSI_SEQUENCE;
+                } else { // False alarm. Emit the first escape byte
+                    state = NORMAL_TEXT;
+                    write(fd, &esc, 1);
                 }
                 break;
-            case 2:
-                if (ch >= 0x40 && ch <= 0x7E) { // End of sequence
-                    escaped = 0;
+            case IN_ANSI_SEQUENCE:
+                if (is_sequence_end_byte(ch)) {
+                    state = NORMAL_TEXT;
                 }
         }
     }
